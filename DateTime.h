@@ -63,7 +63,7 @@ namespace datetime {
 	constexpr char h12_format [] = "%A %B %d, %Y %I:%M:%S %p";
 	constexpr char h24_format [] = "%A %B %d, %Y %H:%M:%S";
 
-	const time_zone* const default_zone = current_zone();
+	static const time_zone* const default_zone = current_zone();
 
 	class hour {
 	private:
@@ -150,7 +150,7 @@ namespace datetime {
 		friend std::ostream& operator << (std::ostream& out, const second& s);
 	};
 
-	template <typename _Clock=system_clock, typename _Duration=_Clock::duration>
+	template <class _Clock=system_clock, class _Duration=_Clock::duration>
 	class DateTime {
 		typedef std::chrono::time_point<_Clock, _Duration> time_point;
 	private:
@@ -182,7 +182,7 @@ namespace datetime {
 		DateTime(const _Duration& timeval, std::string time_zone = "") {
 			_constructor_proxy(new system_time_point(timeval), time_zone);
 		}
-		template <typename _tp_Clock = system_clock, typename _tp_Duration = _tp_Clock::duration>
+		template <class _tp_Clock = system_clock, class _tp_Duration = _tp_Clock::duration>
 		DateTime(const std::chrono::time_point<_tp_Clock, _tp_Duration>& timeval, std::string time_zone = "") {
 			_constructor_proxy(new system_time_point(timeval), time_zone);
 		}
@@ -195,7 +195,7 @@ namespace datetime {
 		date_type GetDate() const {
 			return date_type {date::floor<days>(GetZonedTime().get_local_time())};
 		}
-		template <typename _out_Duration=seconds>
+		template <class _out_Duration=seconds>
 		time_of_day<_out_Duration> GetTime() const {
 			date::local_time<_Duration> local_tp = GetZonedTime().get_local_time();
 			return time_of_day<_out_Duration>(date::floor<_out_Duration>(local_tp - date::floor<days>(local_tp)));
@@ -227,7 +227,7 @@ namespace datetime {
 		DateTime operator - (const _Duration& dur) const {
 			return DateTime(*_time_point - dur);
 		}
-		template <typename _tp_Clock, typename _tp_Duration=_tp_Clock::duration>
+		template <class _tp_Clock, class _tp_Duration=_tp_Clock::duration>
 		_Duration operator - (const std::chrono::time_point<_tp_Clock, _tp_Duration>& other) const {
 			return *_time_point - other;
 		}
@@ -278,7 +278,7 @@ namespace datetime {
 		bool operator != (const DateTime& other) const {
 			return *_time_point != *(other._time_point);
 		}
-		template <typename _tp_Clock, typename _tp_Duration=_tp_Clock::duration>
+		template <class _tp_Clock, class _tp_Duration=_tp_Clock::duration>
 		operator std::chrono::time_point<_tp_Clock, _tp_Duration>() const {
 			return std::chrono::time_point<_tp_Clock, _tp_Duration>(*_time_point);
 		}
@@ -364,19 +364,19 @@ namespace datetime {
 
 			return out;
 		}
-		template <typename _out_Duration>
+		template <class _out_Duration>
 		_out_Duration get_difference(const time_point& other) const {
 			return date::floor<_out_Duration>(*_time_point - other);
 		}
-		template <typename _out_Duration>
+		template <class _out_Duration>
 		_out_Duration get_difference(const DateTime& other) const {
 			return date::floor<_out_Duration>(*this - other);
 		}
-		template <typename _out_Duration>
+		template <class _out_Duration>
 		_out_Duration get_difference(const sys_days& other) const {
 			return date::floor<_out_Duration>(GetDays() - other);
 		}
-		template <typename _out_Duration>
+		template <class _out_Duration>
 		_out_Duration get_difference(const date_type& other) const {
 			return date::floor<_out_Duration>(GetDays() - (sys_days)other);
 		}
