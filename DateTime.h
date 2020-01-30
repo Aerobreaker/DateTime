@@ -1,7 +1,7 @@
 #pragma once
 
 #include "date/tz.h"
-#include <filesystem>
+#include <string>
 
 /*
 Include local copies of the source for date.h and tz.h for 2 reasons:
@@ -55,7 +55,14 @@ namespace datetime {
 	using date::make_zoned;
 	using date::zoned_time;
 	using date::current_zone;
+
+	std::pair<std::string, const time_zone*> get_zone(std::string search);
+	void build_zones_map();
+	void set_install_dir(std::string new_dir);
 	
+	constexpr char h12_format [] = "%A %B %d, %Y %I:%M:%S %p";
+	constexpr char h24_format [] = "%A %B %d, %Y %H:%M:%S";
+
 	const time_zone* const default_zone = current_zone();
 
 	class hour {
@@ -143,88 +150,237 @@ namespace datetime {
 		friend std::ostream& operator << (std::ostream& out, const second& s);
 	};
 
+	template <typename _Clock=system_clock, typename _Duration=_Clock::duration>
 	class DateTime {
+		typedef std::chrono::time_point<_Clock, _Duration> time_point;
 	private:
-		system_time_point* _time_point;
-		bool _h24;
+		time_point* _time_point;
 		const time_zone* _tz;
 		std::string _tz_name;
-		void _constructor_proxy(system_time_point* tp, bool h24, std::string tz);
-		void _no_h24_proxy(system_time_point* tp, std::string tz);
+		void _constructor_proxy(time_point* tp, std::string tz) {
+			_time_point = tp;
+			if (tz != "") {
+				set_timezone(tz);
+			} else {
+				_tz = default_zone;
+				_tz_name = default_zone->name();
+			}
+		}
 	public:
-		std::string h12format = "%A %B %d, %Y %I:%M:%S %p";
-		std::string h24format = "%A %B %d, %Y %H:%M:%S";
-		DateTime(const DateTime& other);
-		DateTime(bool h24 = true, std::string time_zone="");
-		DateTime(const sys_days& timeval, bool h24 = true, std::string time_zone = "");
-		DateTime(const system_duration& timeval, bool h24 = true, std::string time_zone = "");
-		DateTime(const system_time_point& timeval, bool h24 = true, std::string time_zone = "");
-		DateTime(const time_point_seconds& timeval, bool h24 = true, std::string time_zone = "");
-		DateTime(std::string time_zone);
-		DateTime(const sys_days& timeval, std::string time_zone);
-		DateTime(const system_duration& timeval, std::string time_zone);
-		DateTime(const system_time_point& timeval, std::string time_zone);
-		DateTime(const time_point_seconds& timeval, std::string time_zone);
-		sys_days GetDays() const;
-		date_type GetDate() const;
-		time_of_day<seconds> GetTime() const;
-		year GetYear() const;
-		month GetMonth() const;
-		day GetDay() const;
-		hour GetHour() const;
-		minute GetMinute() const;
-		second GetSecond() const;
-		zoned_time<system_duration> GetZonedTime() const;
-		bool is_24h();
-		bool toggle_24h();
-		void make_24h(bool new_24h);
-		DateTime operator + (const system_duration& dur) const;
-		DateTime operator - (const system_duration& dur) const;
-		system_duration operator - (const system_time_point& other) const;
-		system_duration operator - (const DateTime& other) const;
-		DateTime& operator += (const system_duration& dur);
-		DateTime& operator -= (const system_duration& dur);
-		bool operator < (const system_time_point& other) const;
-		bool operator > (const system_time_point& other) const;
-		bool operator == (const system_time_point& other) const;
-		bool operator <= (const system_time_point& other) const;
-		bool operator >= (const system_time_point& other) const;
-		bool operator != (const system_time_point& other) const;
-		bool operator < (const DateTime& other) const;
-		bool operator > (const DateTime& other) const;
-		bool operator == (const DateTime& other) const;
-		bool operator <= (const DateTime& other) const;
-		bool operator >= (const DateTime& other) const;
-		bool operator != (const DateTime& other) const;
-		operator system_time_point() const;
-		operator time_point_seconds() const;
-		friend std::ostream& operator << (std::ostream& out, const DateTime& dt);
-		void set_timezone(std::string new_tz);
-		std::string get_timezone() const;
-		std::string to_string() const;
-		std::string get_offset_from(const DateTime& other) const;
-		template <typename T>
-		T get_difference(const sys_days& other) const {
-			return date::floor<T>(GetDays() - other);
+		std::string format = h12_format;
+		DateTime(const DateTime& other) {
+			_time_point = new time_point(*(other._time_point));
+			_tz = other._tz;
+			_tz_name = other._tz_name;
 		}
-		template <typename T>
-		T get_difference(const system_time_point& other) const {
-			return date::floor<T>(*_time_point - other);
+		DateTime(std::string time_zone = "") {
+			_constructor_proxy(new system_time_point(), time_zone);
 		}
-		template <typename T>
-		T get_difference(const DateTime& other) const {
-			return date::floor<T>(*this - other);
+		DateTime(const sys_days& timeval, std::string time_zone = "") {
+			_constructor_proxy(new system_time_point(timeval), time_zone);
 		}
-		template <typename T>
-		T get_difference(const date_type& other) const {
-			return date::floor<T>(GetDays() - (sys_days)other);
+		DateTime(const _Duration& timeval, std::string time_zone = "") {
+			_constructor_proxy(new system_time_point(timeval), time_zone);
+		}
+		template <typename _tp_Clock = system_clock, typename _tp_Duration = _tp_Clock::duration>
+		DateTime(const std::chrono::time_point<_tp_Clock, _tp_Duration>& timeval, std::string time_zone = "") {
+			_constructor_proxy(new system_time_point(timeval), time_zone);
+		}
+		DateTime(const time_point_seconds& timeval, std::string time_zone = "") {
+			_constructor_proxy(new system_time_point(timeval), time_zone);
+		}
+		sys_days GetDays() const {
+			return date::floor<days>(*_time_point);
+		}
+		date_type GetDate() const {
+			return date_type {date::floor<days>(GetZonedTime().get_local_time())};
+		}
+		template <typename _out_Duration=seconds>
+		time_of_day<_out_Duration> GetTime() const {
+			date::local_time<_Duration> local_tp = GetZonedTime().get_local_time();
+			return time_of_day<_out_Duration>(date::floor<_out_Duration>(local_tp - date::floor<days>(local_tp)));
+		}
+		year GetYear() const {
+			return GetDate().year();
+		}
+		month GetMonth() const {
+			return GetDate().month();
+		}
+		day GetDay() const {
+			return GetDate().day();
+		}
+		hour GetHour() const {
+			return hour(GetTime().hours().count());
+		}
+		minute GetMinute() const {
+			return minute(GetTime().minutes().count());
+		}
+		second GetSecond() const {
+			return second(GetTime().seconds().count());
+		}
+		zoned_time<_Duration> GetZonedTime() const {
+			return make_zoned(_tz, *_time_point);
+		}
+		DateTime operator + (const _Duration& dur) const {
+			return DateTime(*_time_point + dur);
+		}
+		DateTime operator - (const _Duration& dur) const {
+			return DateTime(*_time_point - dur);
+		}
+		template <typename _tp_Clock, typename _tp_Duration=_tp_Clock::duration>
+		_Duration operator - (const std::chrono::time_point<_tp_Clock, _tp_Duration>& other) const {
+			return *_time_point - other;
+		}
+		_Duration operator - (const DateTime& other) const {
+			return *_time_point - *(other._time_point);
+		}
+		DateTime& operator += (const _Duration& dur) {
+			*_time_point += dur;
+			return *this;
+		}
+		DateTime& operator -= (const _Duration& dur) {
+			*_time_point -= dur;
+			return *this;
+		}
+		bool operator < (const time_point& other) const {
+			return *_time_point < other;
+		}
+		bool operator > (const time_point& other) const {
+			return *_time_point > other;
+		}
+		bool operator == (const time_point& other) const {
+			return *_time_point == other;
+		}
+		bool operator <= (const time_point& other) const {
+			return *_time_point <= other;
+		}
+		bool operator >= (const time_point& other) const {
+			return *_time_point >= other;
+		}
+		bool operator != (const time_point& other) const {
+			return *_time_point != other;
+		}
+		bool operator < (const DateTime& other) const {
+			return *_time_point < *(other._time_point);
+		}
+		bool operator > (const DateTime& other) const {
+			return *_time_point > * (other._time_point);
+		}
+		bool operator == (const DateTime& other) const {
+			return *_time_point == *(other._time_point);
+		}
+		bool operator <= (const DateTime& other) const {
+			return *_time_point <= *(other._time_point);
+		}
+		bool operator >= (const DateTime& other) const {
+			return *_time_point >= *(other._time_point);
+		}
+		bool operator != (const DateTime& other) const {
+			return *_time_point != *(other._time_point);
+		}
+		template <typename _tp_Clock, typename _tp_Duration=_tp_Clock::duration>
+		operator std::chrono::time_point<_tp_Clock, _tp_Duration>() const {
+			return std::chrono::time_point<_tp_Clock, _tp_Duration>(*_time_point);
+		}
+		operator time_point_seconds() const {
+			return date::floor<seconds>(*_time_point);
+		}
+		friend std::ostream& operator << (std::ostream& out, const DateTime& dt) {
+			out << dt.to_string();
+		}
+		void set_timezone(std::string new_tz) {
+			std::tie(_tz_name, _tz) = get_zone(new_tz);
+		}
+		std::string get_timezone() const {
+			return _tz_name;
+		}
+		std::string to_string() const {
+			return date::format(format, date::floor<seconds>(GetZonedTime().get_local_time()));
+		}
+		std::string get_offset_from(const DateTime& other) const {
+			std::string out {""};
+
+			system_duration offset = *_time_point - *(other._time_point);
+
+			zoned_time this_time = GetZonedTime();
+			zoned_time other_time = other.GetZonedTime();
+
+			offset += this_time.get_info().offset - other_time.get_info().offset;
+
+			if (offset.count() == 0) {
+				return out;
+			}
+
+			if (offset.count() < 0) {
+				out += "-";
+				offset = -offset;
+			} else {
+				out += "+";
+			}
+
+			days daysoff = date::floor<days>(offset);
+			offset -= daysoff;
+			if (daysoff.count() > 0) {
+				out += std::to_string(daysoff.count()) + " days";
+				if (offset.count() > 0) {
+					out += ", ";
+				} else {
+					return out;
+				}
+			}
+
+			hours hoursoff = date::floor<hours>(offset);
+			offset -= hoursoff;
+			minutes minutesoff = date::floor<minutes>(offset);
+			offset -= minutesoff;
+			seconds secondsoff = date::floor<seconds>(offset);
+
+			if (hoursoff.count() > 0) {
+				if (hoursoff.count() < 10) {
+					out += "0";
+				}
+				out += std::to_string(hoursoff.count());
+			} else {
+				out += "00";
+			}
+			out += ":";
+			if (minutesoff.count() > 0) {
+				if (minutesoff.count() < 10) {
+					out += "0";
+				}
+				out += std::to_string(minutesoff.count());
+			} else {
+				out += "00";
+			}
+			out += ":";
+			if (secondsoff.count() > 0) {
+				if (secondsoff.count() < 10) {
+					out += "0";
+				}
+				out += std::to_string(secondsoff.count());
+			} else {
+				out += "00";
+			}
+
+			return out;
+		}
+		template <typename _out_Duration>
+		_out_Duration get_difference(const time_point& other) const {
+			return date::floor<_out_Duration>(*_time_point - other);
+		}
+		template <typename _out_Duration>
+		_out_Duration get_difference(const DateTime& other) const {
+			return date::floor<_out_Duration>(*this - other);
+		}
+		template <typename _out_Duration>
+		_out_Duration get_difference(const sys_days& other) const {
+			return date::floor<_out_Duration>(GetDays() - other);
+		}
+		template <typename _out_Duration>
+		_out_Duration get_difference(const date_type& other) const {
+			return date::floor<_out_Duration>(GetDays() - (sys_days)other);
 		}
 	};
-
-	std::pair<std::string,  const time_zone*> get_zone(std::string search);
-	void build_zones_map();
-
-	void set_install_dir(std::string new_dir);
 }
 
 #pragma comment(lib, "DateTime.lib")
