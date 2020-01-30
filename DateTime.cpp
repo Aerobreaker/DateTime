@@ -119,7 +119,8 @@ namespace datetime {
 	}
 
 	time_of_day<seconds> DateTime::GetTime() const {
-		return time_of_day<seconds>(floor<seconds>(*_time_point - GetDays() + GetZonedTime().get_info().offset));
+		date::local_time<system_duration> local_tp = GetZonedTime().get_local_time();
+		return time_of_day<seconds>(floor<seconds>(local_tp - floor<days>(local_tp)));
 	}
 
 	year DateTime::GetYear() const {
