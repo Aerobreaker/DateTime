@@ -298,10 +298,10 @@ namespace date {
         access_install() = s;
     }
 
-    static
+    
         const std::string&
         get_install() {
-        static const std::string& ref = access_install();
+        const std::string& ref = access_install();
         return ref;
     }
 
@@ -2989,7 +2989,7 @@ namespace date {
 
 #endif  // HAS_REMOTE_API
 
-    static
+    
         std::string
         get_version(const std::string& path) {
         std::string version;

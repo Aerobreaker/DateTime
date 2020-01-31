@@ -2,6 +2,7 @@
 
 #include "date/tz.h"
 #include <string>
+#include <filesystem>
 
 /*
 Include local copies of the source for date.h and tz.h for 2 reasons:
@@ -16,8 +17,11 @@ Using the following commands from the developer command prompt to download local
 	rd /s /q date
 	move date2 date
 
-Lines 3118 and 3119 can then be replaced with this line:
+Lines 3118 and 3119 in tz.cpp can then be replaced with this line:
 	file += file.substr(file.rfind(folder_delimiter));
+Also need to add get_install and get_version to tz.h, and remove static from their signatures
+Oh and modify line 286 in tz.cpp to:
+	= INSTALL;
 
 Automatic timezone database updates require curl installed.  To install curl:
 	1. Open a command prompt
@@ -63,7 +67,7 @@ namespace datetime {
 	constexpr char h12_format [] = "%A %B %d, %Y %I:%M:%S %p";
 	constexpr char h24_format [] = "%A %B %d, %Y %H:%M:%S";
 
-	static const time_zone* const default_zone = current_zone();
+	static const time_zone* default_zone = nullptr;
 
 	class hour {
 	private:
@@ -71,6 +75,7 @@ namespace datetime {
 		bool _h24;
 	public:
 		hour(bool h24 = true);
+		explicit constexpr hour(int h);
 		explicit constexpr hour(unsigned h, bool h24 = true);
 		constexpr hour& operator ++ ();
 		constexpr hour operator ++ (int);
@@ -152,18 +157,44 @@ namespace datetime {
 
 	template <class _Clock=system_clock, class _Duration=_Clock::duration>
 	class DateTime {
+	public:
 		typedef std::chrono::time_point<_Clock, _Duration> time_point;
 	private:
 		time_point* _time_point;
 		const time_zone* _tz;
 		std::string _tz_name;
-		void _constructor_proxy(time_point* tp, std::string tz) {
-			_time_point = tp;
+		void _string_constructor_proxy(time_point* tp, std::string tz) {
+			const time_zone* zone = default_zone;
+			std::string zone_name {""};
 			if (tz != "") {
-				set_timezone(tz);
+				std::tie(zone_name, zone) = get_zone(tz);
 			} else {
-				_tz = default_zone;
-				_tz_name = default_zone->name();
+				if (zone == nullptr) {
+					std::string dir = date::get_install();
+					if (std::filesystem::exists(dir)) {
+						try {
+							date::get_version(dir + "\\");
+							default_zone = current_zone();
+							zone = default_zone;
+						} catch (std::runtime_error) {
+							zone = nullptr;
+						}
+					}
+				}
+			}
+			_constructor_proxy(tp, zone, zone_name);
+		}
+		void _constructor_proxy(time_point* tp, const time_zone* zone, std::string zone_name = "") {
+			_time_point = tp;
+			_tz = zone;
+			if (zone_name == "") {
+				if (zone != nullptr) {
+					_tz_name = zone->name();
+				} else {
+					_tz_name = "UNDEFINED";
+				}
+			} else {
+				_tz_name = zone_name;
 			}
 		}
 	public:
@@ -173,31 +204,55 @@ namespace datetime {
 			_tz = other._tz;
 			_tz_name = other._tz_name;
 		}
-		DateTime(std::string time_zone = "") {
-			_constructor_proxy(new system_time_point(), time_zone);
+		DateTime(std::string zone = "") {
+			_string_constructor_proxy(new system_time_point(), zone);
 		}
-		DateTime(const sys_days& timeval, std::string time_zone = "") {
-			_constructor_proxy(new system_time_point(timeval), time_zone);
+		DateTime(const sys_days& timeval, std::string zone = "") {
+			_string_constructor_proxy(new system_time_point(timeval), zone);
 		}
-		DateTime(const _Duration& timeval, std::string time_zone = "") {
-			_constructor_proxy(new system_time_point(timeval), time_zone);
+		DateTime(const _Duration& timeval, std::string zone = "") {
+			_string_constructor_proxy(new system_time_point(timeval), zone);
 		}
 		template <class _tp_Clock = system_clock, class _tp_Duration = _tp_Clock::duration>
-		DateTime(const std::chrono::time_point<_tp_Clock, _tp_Duration>& timeval, std::string time_zone = "") {
-			_constructor_proxy(new system_time_point(timeval), time_zone);
+		DateTime(const std::chrono::time_point<_tp_Clock, _tp_Duration>& timeval, std::string zone = "") {
+			_string_constructor_proxy(new system_time_point(timeval), zone);
 		}
-		DateTime(const time_point_seconds& timeval, std::string time_zone = "") {
-			_constructor_proxy(new system_time_point(timeval), time_zone);
+		DateTime(const time_point_seconds& timeval, std::string zone = "") {
+			_string_constructor_proxy(new system_time_point(timeval), zone);
+		}
+		DateTime(const time_zone* zone) {
+			_constructor_proxy(new system_time_point(), zone);
+		}
+		DateTime(const sys_days& timeval, const time_zone* zone) {
+			_constructor_proxy(new system_time_point(timeval), zone);
+		}
+		DateTime(const _Duration& timeval, const time_zone* zone) {
+			_constructor_proxy(new system_time_point(timeval), zone);
+		}
+		template <class _tp_Clock = system_clock, class _tp_Duration = _tp_Clock::duration>
+		DateTime(const std::chrono::time_point<_tp_Clock, _tp_Duration>& timeval, const time_zone* zone) {
+			_constructor_proxy(new system_time_point(timeval), zone);
+		}
+		DateTime(const time_point_seconds& timeval, const time_zone* zone) {
+			_constructor_proxy(new system_time_point(timeval), zone);
 		}
 		sys_days GetDays() const {
 			return date::floor<days>(*_time_point);
 		}
 		date_type GetDate() const {
+			if (_tz == nullptr) {
+				return date_type {date::floor<days>(*_time_point)};
+			}
 			return date_type {date::floor<days>(GetZonedTime().get_local_time())};
 		}
 		template <class _out_Duration=seconds>
 		time_of_day<_out_Duration> GetTime() const {
-			date::local_time<_Duration> local_tp = GetZonedTime().get_local_time();
+			date::local_time<_Duration> local_tp;
+			if (_tz == nullptr) {
+				local_tp = date::clock_cast<date::local_t>(*_time_point);
+			} else {
+				local_tp = GetZonedTime().get_local_time();
+			}
 			return time_of_day<_out_Duration>(date::floor<_out_Duration>(local_tp - date::floor<days>(local_tp)));
 		}
 		year GetYear() const {
@@ -219,6 +274,9 @@ namespace datetime {
 			return second(GetTime().seconds().count());
 		}
 		zoned_time<_Duration> GetZonedTime() const {
+			if (_tz == nullptr) {
+				return make_zoned(current_zone(), *_time_point);
+			}
 			return make_zoned(_tz, *_time_point);
 		}
 		DateTime operator + (const _Duration& dur) const {
@@ -295,17 +353,19 @@ namespace datetime {
 			return _tz_name;
 		}
 		std::string to_string() const {
+			if (_tz == nullptr) {
+				return date::format(format, date::floor<seconds>(*_time_point));
+			}
 			return date::format(format, date::floor<seconds>(GetZonedTime().get_local_time()));
 		}
-		std::string get_offset_from(const DateTime& other) const {
+		std::string get_offset_from(const DateTime& other, bool include_zones = false) const {
 			std::string out {""};
 
 			system_duration offset = *_time_point - *(other._time_point);
 
-			zoned_time this_time = GetZonedTime();
-			zoned_time other_time = other.GetZonedTime();
-
-			offset += this_time.get_info().offset - other_time.get_info().offset;
+			if (include_zones && _tz != nullptr && other._tz != nullptr) {
+				offset += GetZonedTime().get_info().offset - other.GetZonedTime().get_info().offset;
+			}
 
 			if (offset.count() == 0) {
 				return out;

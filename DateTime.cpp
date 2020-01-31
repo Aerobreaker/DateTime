@@ -1,26 +1,22 @@
 #include "DateTime.h"
 
-#include <filesystem>
 #include <unordered_map>
 
 namespace datetime {
+	
 	namespace {
 		//Namespace-private stuff goes here
 		using date::locate_zone;
-		using std::toupper;
 		using std::string;
 		using std::pair;
 		using std::ostream;
-		using std::filesystem::path;
 		using std::filesystem::exists;
-		using std::filesystem::create_directories;
-		using date::set_install;
 
 		std::unordered_map<string, pair<string, const time_zone*>> _cached_zones;
 		string to_upper(string inps) {
 			string out = string(inps);
 			for (auto& chr : out) {
-				chr = toupper(chr);
+				chr = std::toupper(chr);
 			}
 			return out;
 		};
@@ -38,16 +34,18 @@ namespace datetime {
 	}
 
 	void set_install_dir(string new_dir) {
-		path new_path {new_dir};
+		std::filesystem::path new_path {new_dir};
 		if (!exists(new_path.parent_path())) {
-			create_directories(new_path.parent_path());
+			std::filesystem::create_directories(new_path.parent_path());
 		}
-		set_install(new_dir);
+		date::set_install(new_dir);
 	}
 
 	hour::hour(bool h24) : _value(0), _h24(h24) {}
 
 	constexpr hour::hour(unsigned h, bool h24) : _value(h % 24), _h24(h24) {}
+
+	constexpr hour::hour(int h) : _value(h % 24), _h24(true) {}
 
 	constexpr hour& hour::operator ++ () {
 		_value = (_value + 1) % 24;
