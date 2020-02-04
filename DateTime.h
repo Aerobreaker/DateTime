@@ -9,7 +9,7 @@ Include local copies of the source for date.h and tz.h for 2 reasons:
 1. The copy of tz.h installed via vcpkg isn't compiled with auto download, and there doesn't seem to be a way to change this
 2. The standard copy has problems with changing the install directory to something which does not end in "tzdata" when auto installing
 
-Using the following commands from the developer command prompt to download local copies of the source and place the
+Using the following commands (on windows) from the developer command prompt to download local copies of the source and place the
   relevant files into the local directory:
 	git clone https://github.com/HowardHinnant/date
 	move date\src\tz.cpp tz.cpp
@@ -23,7 +23,7 @@ Also need to add get_install and get_version to tz.h, and remove static from the
 Oh and modify line 286 in tz.cpp to:
 	= INSTALL;
 
-Automatic timezone database updates require curl installed.  To install curl:
+Automatic timezone database updates require curl installed.  To install curl (on windows):
 	1. Open a command prompt
 	2. CD to the directory where vcpkg (a C++ package manager written by
 	   Microsoft) is to be installed
@@ -35,6 +35,16 @@ Automatic timezone database updates require curl installed.  To install curl:
 	7. vcpkg install curl[tool] curl[tool]:x64-windows
 	-for static libraries-
 	7. vcpkg install curl[tool]:x86-windows-static curl[tool]:x64-windows-static
+
+To use static curl libraries, 2 additional steps must be performed (on windows):
+	1. Use the x86-windows-static or x64-windows-static vcpkg triplet
+		- In visual studio, add these lines to the "Globals" property group in your .vcxproj file:
+			<VcpkgTriplet Condition="'$(Platform)'=='Win32'">x86-windows-static</VcpkgTriplet>
+			<VcpkgTriplet Condition="'$(Platform)'=='x86'">x86-windows-static</VcpkgTriplet>
+			<VcpkgTriplet Condition="'$(Platform)'=='x64'">x64-windows-static</VcpkgTriplet>
+	2. Add the following additional library dependencies:
+		ws2_32.lib
+		crypt32.lib
 */
 
 namespace datetime {
