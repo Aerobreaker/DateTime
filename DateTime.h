@@ -31,7 +31,10 @@ Automatic timezone database updates require curl installed.  To install curl:
 	4. cd vcpkg
 	5. bootstrap-vcpkg.bat
 	6. vcpkg integrate install
+	-for dynamic libraries-
 	7. vcpkg install curl[tool] curl[tool]:x64-windows
+	-for static libraries-
+	7. vcpkg install curl[tool]:x86-windows-static curl[tool]:x64-windows-static
 */
 
 namespace datetime {
