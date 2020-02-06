@@ -75,7 +75,6 @@ namespace datetime {
 	using date::current_zone;
 
 	std::pair<std::string, const time_zone*> get_zone(std::string search);
-	void build_zones_map();
 	void set_install_dir(std::string new_dir);
 	sys_days smart_date_parse(std::string instr, std::deque<std::string> fmts = {"%m/%d/%y", "%d%B%y", "%B %d, %y", "%A, %d %B, %y", "%A, %B %d, %y", "%d/%m/%y", "%B %d %y", "%d/%m/%y", "%d %B, %y", "%d %B %y", "%m/%d/%Y", "%d%B%Y", "%B %d, %Y", "%A, %d %B, %Y", "%A, %B %d, %Y", "%d/%m/%Y", "%B %d %Y", "%d/%m/%Y", "%d %B, %Y", "%d %B %Y"});
 	seconds smart_time_parse(std::string instr);
@@ -262,8 +261,11 @@ namespace datetime {
 			}
 			return date_type {date::floor<days>(GetZonedTime().get_local_time())};
 		}
+		_Duration GetTime() const {
+			return *_time_point - date::floor<days>(*_time_point);
+		}
 		template <class _out_Duration=seconds>
-		time_of_day<_out_Duration> GetTime() const {
+		time_of_day<_out_Duration> GetTimeOfDay() const {
 			date::local_time<_Duration> local_tp;
 			if (_tz == nullptr) {
 				local_tp = date::clock_cast<date::local_t>(*_time_point);
@@ -282,13 +284,13 @@ namespace datetime {
 			return GetDate().day();
 		}
 		hour GetHour() const {
-			return hour(GetTime().hours().count());
+			return hour(GetTimeOfDay().hours().count());
 		}
 		minute GetMinute() const {
-			return minute(GetTime().minutes().count());
+			return minute(GetTimeOfDay().minutes().count());
 		}
 		second GetSecond() const {
-			return second(GetTime().seconds().count());
+			return second(GetTimeOfDay().seconds().count());
 		}
 		zoned_time<_Duration> GetZonedTime() const {
 			if (_tz == nullptr) {
