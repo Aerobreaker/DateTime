@@ -1,6 +1,7 @@
 #include "DateTime.h"
 
 #include <unordered_map>
+#include <sstream>
 
 namespace datetime {
 	
@@ -11,6 +12,7 @@ namespace datetime {
 		using std::pair;
 		using std::ostream;
 		using std::filesystem::exists;
+		using date::parse;
 
 		std::unordered_map<string, pair<string, const time_zone*>> _cached_zones;
 		string to_upper(string inps) {
@@ -39,6 +41,43 @@ namespace datetime {
 			std::filesystem::create_directories(new_path.parent_path());
 		}
 		date::set_install(new_dir);
+	}
+
+	sys_days smart_date_parse(string instr, std::deque<string> fmts) {
+		for (int i = 0; i < instr.length(); i++) {
+			if (i == 0 || instr[i-1] == ' ' || (instr[i-1] >= '0' && instr[i-1] <= '9')) {
+				instr[i] = toupper(instr[i]);
+			} else {
+				instr[i] = std::tolower(instr[i]);
+			}
+		}
+		std::istringstream instrm(instr);
+		sys_days outp(days(0));
+		while (!fmts.empty()) {
+			instrm.clear();
+			instrm.str(instr);
+			instrm >> parse(fmts.front(), outp);
+			if (!instrm.fail()) {
+				return outp;
+			}
+			fmts.pop_front();
+		}
+		return outp;
+	}
+
+	seconds smart_time_parse(std::string instr) {
+		//Code to parse goes here
+		//nn:nn:nn format
+		//Optionally, allow " [AaPp][Mm]?"
+		//Ignore everything after first invalid character
+		//     nn p == hh p
+		//  nn:nn p == hh:mm p
+		//       nn == hh
+		//    nn:nn == hh:mm
+		//Validate 0 <= hh < 24 (12 with am/pm included)
+		//Validate 0 <= mm < 60
+		//Validate 0 <= ss < 60
+		return seconds(0);
 	}
 
 	hour::hour(bool h24) : _value(0), _h24(h24) {}

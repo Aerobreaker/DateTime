@@ -3,6 +3,7 @@
 #include "date/tz.h"
 #include <string>
 #include <filesystem>
+#include <deque>
 
 /*
 Include local copies of the source for date.h and tz.h for 2 reasons:
@@ -76,6 +77,8 @@ namespace datetime {
 	std::pair<std::string, const time_zone*> get_zone(std::string search);
 	void build_zones_map();
 	void set_install_dir(std::string new_dir);
+	sys_days smart_date_parse(std::string instr, std::deque<std::string> fmts = {"%m/%d/%y", "%d%B%y", "%B %d, %y", "%A, %d %B, %y", "%A, %B %d, %y", "%d/%m/%y", "%B %d %y", "%d/%m/%y", "%d %B, %y", "%d %B %y", "%m/%d/%Y", "%d%B%Y", "%B %d, %Y", "%A, %d %B, %Y", "%A, %B %d, %Y", "%d/%m/%Y", "%B %d %Y", "%d/%m/%Y", "%d %B, %Y", "%d %B %Y"});
+	seconds smart_time_parse(std::string instr);
 	
 	constexpr char h12_format [] = "%A %B %d, %Y %I:%M:%S %p";
 	constexpr char h24_format [] = "%A %B %d, %Y %H:%M:%S";
@@ -216,6 +219,7 @@ namespace datetime {
 			_time_point = new time_point(*(other._time_point));
 			_tz = other._tz;
 			_tz_name = other._tz_name;
+			format = other.format;
 		}
 		DateTime(std::string zone = "") {
 			_string_constructor_proxy(new system_time_point(), zone);
