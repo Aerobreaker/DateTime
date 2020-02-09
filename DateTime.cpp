@@ -1,7 +1,11 @@
 #include "DateTime.h"
 
 #include <unordered_map>
+#include <unordered_set>
 #include <sstream>
+#ifdef arith_parse_strings
+#include <exprtk.hpp>
+#endif
 
 using namespace date;
 using namespace std;
@@ -13,13 +17,68 @@ namespace datetime {
 		using std::filesystem::exists;
 
 		std::unordered_map<string, pair<string, const time_zone*>> _cached_zones;
+		
 		string to_upper(string inps) {
 			string out = string(inps);
 			for (char& chr : out) {
 				chr = std::toupper(chr);
 			}
 			return out;
-		};
+		}
+
+		string to_lower(string inp) {
+			string out = inp;
+			for (char& it : out) {
+				it = tolower(it);
+			}
+			return out;
+		}
+
+		vector<string> split_string(string inp, string delims) {
+			vector<string> outp {""};
+			unordered_set<char> delimiters;
+			for (const char& it : delims) {
+				delimiters.insert(it);
+			}
+			for (const char& it : inp) {
+				if (delimiters.contains(it)) {
+					outp.push_back("");
+				} else {
+					outp.back().push_back(it);
+				}
+			}
+			if (outp.back() == "") outp.pop_back();
+			return outp;
+		}
+
+		vector<string> split_string(string inp, char delim) {
+			vector<string> outp {""};
+			for (const char& it : inp) {
+				if (it == delim) {
+					outp.push_back("");
+				} else {
+					outp.back().push_back(it);
+				}
+			}
+			if (outp.back() == "") outp.pop_back();
+			return outp;
+		}
+
+		long long to_number(string inp) {
+#ifdef arith_parse_strings
+			using namespace exprtk;
+			expression<double> expr;
+			parser<double>pars;
+			if (!pars.compile(inp, expr)) return 0;
+			return expr.value();
+#else
+			stringstream instrm(inp);
+			long long outp;
+			instrm >> outp;
+			return outp;
+#endif
+		}
+
 	}
 
 	pair<string, const time_zone*> translate_zone(string search);
@@ -43,7 +102,7 @@ namespace datetime {
 		date::set_install(new_dir);
 	}
 
-	sys_days smart_date_parse(string instr, std::deque<string> fmts) {
+	sys_days parse_date(string instr, deque<string> fmts) {
 		for (int i = 0; i < instr.length(); i++) {
 			if (i == 0 || instr[i-1] == ' ' || (instr[i-1] >= '0' && instr[i-1] <= '9')) {
 				instr[i] = toupper(instr[i]);
@@ -65,7 +124,7 @@ namespace datetime {
 		return outp;
 	}
 
-	seconds smart_time_parse(std::string instr) {
+	seconds parse_time(string instr) {
 		/*
 		This one's a bit longer than smart_date_parse, but since I'm only handling 2 formats and they're relatively
 		easy to parse, I wanted to just build a quick state machine to handle it rather than figuring out formats and
@@ -217,6 +276,315 @@ namespace datetime {
 		}
 		min %= 60;
 		sec %= 60;
+		return hours(hr) + minutes(min) + seconds(sec);
+	}
+
+	sys_days smart_parse_date(string inp, bool prefer_month) {
+		string delim;
+		int slshcnt = 0;
+		int hyphcnt = 0;
+		for (const char& it : inp) {
+			if (it == ' ' || it == '\\') {
+				delim = " \\";
+				break;
+			}
+			if (it == '/') slshcnt++;
+			if (it == '-') hyphcnt++;
+		}
+		if (delim == "") {
+			if ((slshcnt == 2) ^ (hyphcnt == 2)) {
+				if (slshcnt == 2) delim = "/";
+				if (hyphcnt == 2) delim = "-";
+			} else {
+				if (slshcnt > 2) {
+					delim = "/";
+				} else {
+					if (hyphcnt > 2) {
+						delim = "-";
+					}
+				}
+			}
+		}
+		if (delim == "") {
+			constexpr sys_days null_date = sys_days(days(0));
+			sys_days outp = null_date;
+			if (inp.length() == 8) {
+				outp = parse_date(inp, {"%d%m%y", "%m%d%y", "%y%m%d"});
+			}
+			return outp != null_date ? outp : sys_days(days(to_number(inp)));
+		} else {
+			vector<string> tokens = split_string(inp, delim);
+			deque<long long> unused;
+			long long year = 0;
+			long long month = 0;
+			long long day = 0;
+			date_type today {date::floor<days>(system_clock::now())};
+			for (const string& it : tokens) {
+				string token = to_upper(it);
+				if (token == "JANUARY" || token == "JAN") {
+					if (month != 0) {
+						day = month;
+					}
+					month = 1;
+				} else if (token == "FEBRUARY" || token == "FEB") {
+					if (month != 0) {
+						day = month;
+					}
+					month = 2;
+				} else if (token == "MARCH" || token == "MAR") {
+					if (month != 0) {
+						day = month;
+					}
+					month = 3;
+				} else if (token == "APRIL" || token == "APR") {
+					if (month != 0) {
+						day = month;
+					}
+					month = 4;
+				} else if (token == "MAY") {
+					if (month != 0) {
+						day = month;
+					}
+					month = 5;
+				} else if (token == "JUNE" || token == "JUN") {
+					if (month != 0) {
+						day = month;
+					}
+					month = 6;
+				} else if (token == "JULY" || token == "JUL") {
+					if (month != 0) {
+						day = month;
+					}
+					month = 7;
+				} else if (token == "AUGUST" || token == "AUG") {
+					if (month != 0) {
+						day = month;
+					}
+					month = 8;
+				} else if (token == "SEPTEMBER" || token == "SEP") {
+					if (month != 0) {
+						day = month;
+					}
+					month = 9;
+				} else if (token == "OCTOBER" || token == "OCT") {
+					if (month != 0) {
+						day = month;
+					}
+					month = 10;
+				} else if (token == "NOVEMBER" || token == "NOV") {
+					if (month != 0) {
+						day = month;
+					}
+					month = 11;
+				} else if (token == "DECEMBER" || token == "DEC") {
+					if (month != 0) {
+						day = month;
+					}
+					month = 12;
+				} else {
+					long long val = to_number(token);
+					if (month == 0 && val > 0 && val < 13 && (day == 0) == prefer_month) {
+						month = val;
+					} else if (day == 0 && val > 0 && val < 32) {
+						if (month == 0) {
+							day = val;
+						} else if (month == 2 && val < 30) {
+							day = val;
+						} else if (month == 1 || month == 3 || month == 5 || month == 7 || month == 8 || month == 10 || month == 12) {
+							day = val;
+						} else if (val < 31) {
+							day = val;
+						}
+					} else if (year == 0) {
+						if (token.length() > 2 || (int)(val / 100)) {
+							year = val;
+						} else {
+							//If they enter a 1 or 2 character token less than 100 (not that I can figure out how to get someting > 100 since we're not capturing factorial)
+							year = val + (int)((int)today.year() / 100) * 100;
+						}
+					} else if (val != 0) {
+						unused.push_back(val);
+					}
+				}
+			}
+			if (day > 31 && year < 32) {
+				tie(day, year) = {year, day};
+			}
+			if (month == 0) {
+				if (!unused.empty()) {
+					month = unused.front();
+					unused.pop_front();
+				} else {
+					month = (unsigned)today.month();
+				}
+			}
+			if (day == 0) {
+				if (!unused.empty()) {
+					day = unused.front();
+					unused.pop_front();
+				} else {
+					day = (unsigned)today.day();
+				}
+			}
+			if (year == 0) {
+				if (!unused.empty()) {
+					year = unused.front();
+					unused.pop_front();
+				} else {
+					year = (int)today.year();
+				}
+			}
+			return sys_days(date::day(day) / date::month(month) / date::year(year));
+		}
+	}
+
+	seconds smart_parse_time(string inp) {
+		enum class reading {
+			hrs,
+			mins,
+			secs,
+			AMPM,
+			finalize
+		};
+		reading reading_state = reading::hrs;
+		bool pm = false;
+		long long hr = 0;
+		long long min = 0;
+		long long sec = 0;
+		string workingstr;
+		for (const char& it : inp) {
+			switch (reading_state) {
+			case reading::hrs:
+				switch (it) {
+				case ' ':
+					hr = to_number(workingstr);
+					workingstr = "";
+					reading_state = reading::AMPM;
+					break;
+				case ':':
+					hr = to_number(workingstr);
+					workingstr = "";
+					reading_state = reading::mins;
+					break;
+				case '0':
+				case '1':
+				case '2':
+				case '3':
+				case '4':
+				case '5':
+				case '6':
+				case '7':
+				case '8':
+				case '9':
+#ifndef  arith_parse_strings
+					workingstr.push_back(it);
+#endif // ! arith_parse_strings
+				case '-':
+				case '+':
+				case '*':
+				case '/':
+#ifdef arith_parse_strings
+					workingstr.push_back(it);
+#endif // arith_parse_strings
+					break;
+				default:
+					hr = to_number(workingstr);
+					workingstr = "";
+					reading_state = reading::finalize;
+				}
+				break;
+			case reading::mins:
+				switch (it) {
+				case ' ':
+					min = to_number(workingstr);
+					workingstr = "";
+					reading_state = reading::AMPM;
+					break;
+				case ':':
+					min = to_number(workingstr);
+					workingstr = "";
+					reading_state = reading::secs;
+					break;
+				case '0':
+				case '1':
+				case '2':
+				case '3':
+				case '4':
+				case '5':
+				case '6':
+				case '7':
+				case '8':
+				case '9':
+#ifndef  arith_parse_strings
+					workingstr.push_back(it);
+#endif // ! arith_parse_strings
+				case '-':
+				case '+':
+				case '*':
+				case '/':
+#ifdef arith_parse_strings
+					workingstr.push_back(it);
+#endif // arith_parse_strings
+					break;
+				default:
+					min = to_number(workingstr);
+					workingstr = "";
+					reading_state = reading::finalize;
+				}
+				break;
+			case reading::secs:
+				switch (it) {
+				case ' ':
+					sec = to_number(workingstr);
+					workingstr = "";
+					reading_state = reading::AMPM;
+					break;
+				case '0':
+				case '1':
+				case '2':
+				case '3':
+				case '4':
+				case '5':
+				case '6':
+				case '7':
+				case '8':
+				case '9':
+#ifndef  arith_parse_strings
+					workingstr.push_back(it);
+#endif // ! arith_parse_strings
+				case '-':
+				case '+':
+				case '*':
+				case '/':
+#ifdef arith_parse_strings
+					workingstr.push_back(it);
+#endif // arith_parse_strings
+					break;
+				default:
+					sec = to_number(workingstr);
+					workingstr = "";
+					reading_state = reading::finalize;
+				}
+				break;
+			case reading::AMPM:
+				if (it == 'p' || it == 'P') {
+					pm = true;
+				}
+				reading_state = reading::finalize;
+			}
+			if (reading_state == reading::finalize) { break; }
+		}
+		switch (reading_state) {
+		case reading::hrs:
+			hr = to_number(workingstr);
+			break;
+		case reading::mins:
+			min = to_number(workingstr);
+			break;
+		case reading::secs:
+			sec = to_number(workingstr);
+		}
+		if (pm) hr += 12;
 		return hours(hr) + minutes(min) + seconds(sec);
 	}
 

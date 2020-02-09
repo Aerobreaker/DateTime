@@ -1,5 +1,9 @@
 #pragma once
 
+/*
+Compile with arith_parse_strings defined to arithmetically parse date and time strings in smart_parse_date and smart_parse_time
+*/
+
 #include "date/tz.h"
 #include <string>
 #include <filesystem>
@@ -76,8 +80,12 @@ namespace datetime {
 
 	std::pair<std::string, const time_zone*> get_zone(std::string search);
 	void set_install_dir(std::string new_dir);
-	sys_days smart_date_parse(std::string instr, std::deque<std::string> fmts = {"%m/%d/%y", "%d%B%y", "%B %d, %y", "%A, %d %B, %y", "%A, %B %d, %y", "%d/%m/%y", "%B %d %y", "%d/%m/%y", "%d %B, %y", "%d %B %y", "%m/%d/%Y", "%d%B%Y", "%B %d, %Y", "%A, %d %B, %Y", "%A, %B %d, %Y", "%d/%m/%Y", "%B %d %Y", "%d/%m/%Y", "%d %B, %Y", "%d %B %Y"});
-	seconds smart_time_parse(std::string instr);
+	//With these parse functions, I considered writing a function to read a string and spit out a datetime, but it would be a whole ton of work to process it in a flexible manner
+	//I'm settling on letting the user worry about splitting out a string for the date and a separate string for the time and using these functions to parse them separately and add them into a datetime
+	sys_days parse_date(std::string instr, std::deque<std::string> fmts = {"%m/%d/%y", "%d%B%y", "%B %d, %y", "%A, %d %B, %y", "%A, %B %d, %y", "%d/%m/%y", "%B %d %y", "%d/%m/%y", "%d %B, %y", "%d %B %y", "%m/%d/%Y", "%d%B%Y", "%B %d, %Y", "%A, %d %B, %Y", "%A, %B %d, %Y", "%d/%m/%Y", "%B %d %Y", "%d/%m/%Y", "%d %B, %Y", "%d %B %Y"});
+	sys_days smart_parse_date(std::string instr, bool prefer_month = true);
+	seconds parse_time(std::string instr);
+	seconds smart_parse_time(std::string instr);
 	
 	constexpr char h12_format [] = "%A %B %d, %Y %I:%M:%S %p";
 	constexpr char h24_format [] = "%A %B %d, %Y %H:%M:%S";
