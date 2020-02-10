@@ -174,6 +174,7 @@ namespace datetime {
 				case '9':
 					workingstr << it;
 				case '-':
+				case '.':
 					break;
 				default:
 					workingstr >> hr;
@@ -205,6 +206,7 @@ namespace datetime {
 				case '9':
 					workingstr << it;
 				case '-':
+				case '.':
 					break;
 				default:
 					workingstr >> min;
@@ -231,6 +233,7 @@ namespace datetime {
 				case '9':
 					workingstr << it;
 				case '-':
+				case '.':
 					break;
 				default:
 					workingstr >> sec;
@@ -280,162 +283,256 @@ namespace datetime {
 	}
 
 	sys_days smart_parse_date(string inp, bool prefer_month) {
-		string delim;
-		int slshcnt = 0;
-		int hyphcnt = 0;
+		inp = to_upper(inp);
+		string delim = ",";
+		int special_delims[3] = {0, 0, 0};
+		vector<string> tokens {""};
 		for (const char& it : inp) {
 			if (it == ' ' || it == '\\') {
-				delim = " \\";
+				delim += " \\";
 				break;
 			}
-			if (it == '/') slshcnt++;
-			if (it == '-') hyphcnt++;
+			if (it == '/') special_delims[0]++;
+			if (it == '-') special_delims[1]++;
+			if (it == '.') special_delims[2]++;
 		}
 		if (delim == "") {
-			if ((slshcnt == 2) ^ (hyphcnt == 2)) {
-				if (slshcnt == 2) delim = "/";
-				if (hyphcnt == 2) delim = "-";
+			if ((special_delims[0] == 2) + (special_delims[1] == 2) + (special_delims[2] == 2) == 1) {
+				if (special_delims[0] == 2) {
+					delim += "/";
+				}
+				if (special_delims[1] == 2) {
+					delim += "-";
+				}
+				if (special_delims[2] == 2) {
+					delim += ".";
+				}
 			} else {
-				if (slshcnt > 2) {
-					delim = "/";
-				} else {
-					if (hyphcnt > 2) {
-						delim = "-";
-					}
+				if (special_delims[0] > 1) {
+					delim += "/";
+				} else if (special_delims[1] > 1) {
+					delim += "-";
+				} else if (special_delims[2] > 1) {
+					delim += ".";
 				}
 			}
 		}
-		if (delim == "") {
+		if (delim == ",") {
 			constexpr sys_days null_date = sys_days(days(0));
 			sys_days outp = null_date;
 			if (inp.length() == 8) {
 				outp = parse_date(inp, {"%d%m%y", "%m%d%y", "%y%m%d"});
 			}
-			return outp != null_date ? outp : sys_days(days(to_number(inp)));
+			if (outp == null_date) {
+				bool reading_num;
+				switch (inp[0]) {
+				case '0':
+				case '1':
+				case '2':
+				case '3':
+				case '4':
+				case '5':
+				case '6':
+				case '7':
+				case '8':
+				case '9':
+				case '-':
+				case '+':
+				case '/':
+				case '*':
+					reading_num = true;
+					break;
+				default:
+					reading_num = false;
+				}
+				for (const char& it : inp) {
+					switch (it) {
+					case '0':
+					case '1':
+					case '2':
+					case '3':
+					case '4':
+					case '5':
+					case '6':
+					case '7':
+					case '8':
+					case '9':
+					case '-':
+					case '+':
+					case '/':
+					case '*':
+						switch (reading_num) {
+						case true:
+							tokens.back().push_back(it);
+							break;
+						case false:
+							tokens.push_back(string(1, it));
+							reading_num = true;
+						}
+						break;
+					case 'A':
+					case 'B':
+					case 'C':
+					case 'D':
+					case 'E':
+					case 'F':
+					case 'G':
+					case 'H':
+					case 'I':
+					case 'J':
+					case 'K':
+					case 'L':
+					case 'M':
+					case 'N':
+					case 'O':
+					case 'P':
+					case 'Q':
+					case 'R':
+					case 'S':
+					case 'T':
+					case 'U':
+					case 'V':
+					case 'W':
+					case 'X':
+					case 'Y':
+					case 'Z':
+						switch (reading_num) {
+						case true:
+							tokens.push_back(string(1, it));
+							reading_num = false;
+							break;
+						case false:
+							tokens.back().push_back(it);
+						}
+					}
+				}
+			} else {
+				return outp;
+			}
+			//return outp != null_date ? outp : sys_days(days(to_number(inp)));
 		} else {
-			vector<string> tokens = split_string(inp, delim);
-			deque<long long> unused;
-			long long year = 0;
-			long long month = 0;
-			long long day = 0;
-			date_type today {date::floor<days>(system_clock::now())};
-			for (const string& it : tokens) {
-				string token = to_upper(it);
-				if (token == "JANUARY" || token == "JAN") {
-					if (month != 0) {
-						day = month;
-					}
-					month = 1;
-				} else if (token == "FEBRUARY" || token == "FEB") {
-					if (month != 0) {
-						day = month;
-					}
-					month = 2;
-				} else if (token == "MARCH" || token == "MAR") {
-					if (month != 0) {
-						day = month;
-					}
-					month = 3;
-				} else if (token == "APRIL" || token == "APR") {
-					if (month != 0) {
-						day = month;
-					}
-					month = 4;
-				} else if (token == "MAY") {
-					if (month != 0) {
-						day = month;
-					}
-					month = 5;
-				} else if (token == "JUNE" || token == "JUN") {
-					if (month != 0) {
-						day = month;
-					}
-					month = 6;
-				} else if (token == "JULY" || token == "JUL") {
-					if (month != 0) {
-						day = month;
-					}
-					month = 7;
-				} else if (token == "AUGUST" || token == "AUG") {
-					if (month != 0) {
-						day = month;
-					}
-					month = 8;
-				} else if (token == "SEPTEMBER" || token == "SEP") {
-					if (month != 0) {
-						day = month;
-					}
-					month = 9;
-				} else if (token == "OCTOBER" || token == "OCT") {
-					if (month != 0) {
-						day = month;
-					}
-					month = 10;
-				} else if (token == "NOVEMBER" || token == "NOV") {
-					if (month != 0) {
-						day = month;
-					}
-					month = 11;
-				} else if (token == "DECEMBER" || token == "DEC") {
-					if (month != 0) {
-						day = month;
-					}
-					month = 12;
-				} else {
-					long long val = to_number(token);
-					if (month == 0 && val > 0 && val < 13 && (day == 0) == prefer_month) {
-						month = val;
-					} else if (day == 0 && val > 0 && val < 32) {
-						if (month == 0) {
-							day = val;
-						} else if (month == 2 && val < 30) {
-							day = val;
-						} else if (month == 1 || month == 3 || month == 5 || month == 7 || month == 8 || month == 10 || month == 12) {
-							day = val;
-						} else if (val < 31) {
-							day = val;
-						}
-					} else if (year == 0) {
-						if (token.length() > 2 || (int)(val / 100)) {
-							year = val;
-						} else {
-							//If they enter a 1 or 2 character token less than 100 (not that I can figure out how to get someting > 100 since we're not capturing factorial)
-							year = val + (int)((int)today.year() / 100) * 100;
-						}
-					} else if (val != 0) {
-						unused.push_back(val);
-					}
-				}
-			}
-			if (day > 31 && year < 32) {
-				tie(day, year) = {year, day};
-			}
-			if (month == 0) {
-				if (!unused.empty()) {
-					month = unused.front();
-					unused.pop_front();
-				} else {
-					month = (unsigned)today.month();
-				}
-			}
-			if (day == 0) {
-				if (!unused.empty()) {
-					day = unused.front();
-					unused.pop_front();
-				} else {
-					day = (unsigned)today.day();
-				}
-			}
-			if (year == 0) {
-				if (!unused.empty()) {
-					year = unused.front();
-					unused.pop_front();
-				} else {
-					year = (int)today.year();
-				}
-			}
-			return sys_days(date::day(day) / date::month(month) / date::year(year));
+			tokens = split_string(inp, delim);
 		}
+		deque<long long> unused;
+		long long year = 0;
+		long long month = 0;
+		long long day = 0;
+		date_type today {date::floor<days>(system_clock::now())};
+		for (const string& token : tokens) {
+			if (token == "JANUARY" || token == "JAN") {
+				if (month != 0) {
+					day = month;
+				}
+				month = 1;
+			} else if (token == "FEBRUARY" || token == "FEB") {
+				if (month != 0) {
+					day = month;
+				}
+				month = 2;
+			} else if (token == "MARCH" || token == "MAR") {
+				if (month != 0) {
+					day = month;
+				}
+				month = 3;
+			} else if (token == "APRIL" || token == "APR") {
+				if (month != 0) {
+					day = month;
+				}
+				month = 4;
+			} else if (token == "MAY") {
+				if (month != 0) {
+					day = month;
+				}
+				month = 5;
+			} else if (token == "JUNE" || token == "JUN") {
+				if (month != 0) {
+					day = month;
+				}
+				month = 6;
+			} else if (token == "JULY" || token == "JUL") {
+				if (month != 0) {
+					day = month;
+				}
+				month = 7;
+			} else if (token == "AUGUST" || token == "AUG") {
+				if (month != 0) {
+					day = month;
+				}
+				month = 8;
+			} else if (token == "SEPTEMBER" || token == "SEP") {
+				if (month != 0) {
+					day = month;
+				}
+				month = 9;
+			} else if (token == "OCTOBER" || token == "OCT") {
+				if (month != 0) {
+					day = month;
+				}
+				month = 10;
+			} else if (token == "NOVEMBER" || token == "NOV") {
+				if (month != 0) {
+					day = month;
+				}
+				month = 11;
+			} else if (token == "DECEMBER" || token == "DEC") {
+				if (month != 0) {
+					day = month;
+				}
+				month = 12;
+			} else {
+				long long val = to_number(token);
+				if (month == 0 && val > 0 && val < 13 && (day == 0) == prefer_month) {
+					month = val;
+				} else if (day == 0 && val > 0 && val < 32) {
+					if (month == 0) {
+						day = val;
+					} else if (month == 2 && val < 30) {
+						day = val;
+					} else if (month == 1 || month == 3 || month == 5 || month == 7 || month == 8 || month == 10 || month == 12) {
+						day = val;
+					} else if (val < 31) {
+						day = val;
+					}
+				} else if (year == 0) {
+					if (token.length() > 2 || (int)(val / 100)) {
+						year = val;
+					} else {
+						//If they enter a 1 or 2 character token less than 100 (not that I can figure out how to get someting > 100 since we're not capturing factorial)
+						year = val + (int)((int)today.year() / 100) * 100;
+					}
+				} else if (val != 0) {
+					unused.push_back(val);
+				}
+			}
+		}
+		if (day > 31 && year < 32) {
+			tie(day, year) = {year, day};
+		}
+		if (month == 0) {
+			if (!unused.empty()) {
+				month = unused.front();
+				unused.pop_front();
+			} else {
+				month = (unsigned)today.month();
+			}
+		}
+		if (day == 0) {
+			if (!unused.empty()) {
+				day = unused.front();
+				unused.pop_front();
+			} else {
+				day = (unsigned)today.day();
+			}
+		}
+		if (year == 0) {
+			if (!unused.empty()) {
+				year = unused.front();
+				unused.pop_front();
+			} else {
+				year = (int)today.year();
+			}
+		}
+		return sys_days(date::day(day) / date::month(month) / date::year(year));
 	}
 
 	seconds smart_parse_time(string inp) {
