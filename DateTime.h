@@ -79,6 +79,7 @@ namespace datetime {
 	using date::current_zone;
 
 	std::pair<std::string, const time_zone*> get_zone(std::string search);
+	void clear_cache();
 	void set_install_dir(std::string new_dir);
 	//With these parse functions, I considered writing a function to read a string and spit out a datetime, but it would be a whole ton of work to process it in a flexible manner
 	//I'm settling on letting the user worry about splitting out a string for the date and a separate string for the time and using these functions to parse them separately and add them into a datetime
@@ -352,7 +353,7 @@ namespace datetime {
 			return *_time_point > * (other._time_point);
 		}
 		bool operator == (const DateTime& other) const {
-			return *_time_point == *(other._time_point);
+			return *_time_point == *(other._time_point) && _tz == other._tz;
 		}
 		bool operator <= (const DateTime& other) const {
 			return *_time_point <= *(other._time_point);
@@ -361,7 +362,7 @@ namespace datetime {
 			return *_time_point >= *(other._time_point);
 		}
 		bool operator != (const DateTime& other) const {
-			return *_time_point != *(other._time_point);
+			return *_time_point != *(other._time_point) || _tz != other._tz;
 		}
 		template <class _tp_Clock, class _tp_Duration=_tp_Clock::duration>
 		operator std::chrono::time_point<_tp_Clock, _tp_Duration>() const {
@@ -466,6 +467,9 @@ namespace datetime {
 		template <class _out_Duration>
 		_out_Duration get_difference(const date_type& other) const {
 			return date::floor<_out_Duration>(GetDays() - (sys_days)other);
+		}
+		~DateTime() {
+			delete _time_point;
 		}
 	};
 }

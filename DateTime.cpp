@@ -14,10 +14,10 @@ namespace datetime {
 	
 	namespace {
 		//Namespace-private stuff goes here
+		unordered_map<string, pair<string, const time_zone*>> _cached_zones;
+
 		using std::filesystem::exists;
 
-		std::unordered_map<string, pair<string, const time_zone*>> _cached_zones;
-		
 		string to_upper(string inps) {
 			string out = string(inps);
 			for (char& chr : out) {
@@ -94,6 +94,13 @@ namespace datetime {
 		return _cached_zones[newsearch];
 	}
 
+	void clear_cache() {
+		for (pair<const string, pair<string, const time_zone*>>& it : _cached_zones) {
+			delete it.second.second;
+		}
+		_cached_zones.clear();
+	}
+
 	void set_install_dir(string new_dir) {
 		std::filesystem::path new_path {new_dir};
 		if (!exists(new_path.parent_path())) {
@@ -103,7 +110,7 @@ namespace datetime {
 	}
 
 	sys_days parse_date(string instr, deque<string> fmts) {
-		for (int i = 0; i < instr.length(); i++) {
+		for (size_t i = 0; i < instr.length(); i++) {
 			if (i == 0 || instr[i-1] == ' ' || (instr[i-1] >= '0' && instr[i-1] <= '9')) {
 				instr[i] = toupper(instr[i]);
 			} else {
