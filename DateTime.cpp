@@ -95,9 +95,11 @@ namespace datetime {
 	}
 
 	void clear_cache() {
-		for (pair<const string, pair<string, const time_zone*>>& it : _cached_zones) {
+		//I initially put this in to try to stop some memory leaks I was having in another program
+		//But this section causes errors
+		/*for (pair<const string, pair<string, const time_zone*>>& it : _cached_zones) {
 			delete it.second.second;
-		}
+		}*/
 		_cached_zones.clear();
 	}
 

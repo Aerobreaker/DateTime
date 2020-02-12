@@ -469,7 +469,9 @@ namespace datetime {
 			return date::floor<_out_Duration>(GetDays() - (sys_days)other);
 		}
 		~DateTime() {
-			delete _time_point;
+			//I initially put this in to try to stop some memory leaks I was having in another program
+			//But this line causes errors
+			//delete _time_point;
 		}
 	};
 }
