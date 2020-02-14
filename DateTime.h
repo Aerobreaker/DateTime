@@ -304,9 +304,6 @@ namespace datetime {
 		void Set(const DateTime& new_dt) {
 			delete _time_point;
 			_time_point = new time_point(*(new_dt._time_point));
-			_tz = new_dt._tz;
-			_tz_name = new_dt._tz_name;
-			format = new_dt.format;
 		}
 		void Set(const time_point& new_tp) {
 			delete _time_point;
