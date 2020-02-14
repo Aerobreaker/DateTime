@@ -301,6 +301,59 @@ namespace datetime {
 		second GetSecond() const {
 			return second(GetTimeOfDay().seconds().count());
 		}
+		void Set(const DateTime& new_dt) {
+			delete _time_point;
+			_time_point = new time_point(*(new_dt._time_point));
+			_tz = new_dt._tz;
+			_tz_name = new_dt._tz_name;
+			format = new_dt.format;
+		}
+		void Set(const time_point& new_tp) {
+			delete _time_point;
+			_time_point = new time_point(new_tp);
+		}
+		void Set(const sys_days& new_date) {
+			SetDate(new_date);
+		}
+		void Set(const date_type& new_date) {
+			SetDate((sys_days)new_date);
+		}
+		void Set(const _Duration& new_time) {
+			SetTime(new_time);
+		}
+		void SetDate(const sys_days& new_date) {
+			*_time_point = new_date + GetTime();
+		}
+		void SetDate(const date_type& new_date) {
+			SetDate((sys_days)new_date);
+		}
+		void SetTime(const _Duration& new_time) {
+			*_time_point = GetDays() + new_time;
+		}
+		void SetYear(const int& year) {
+			int chg = year - GetYear();
+			*_time_point += years(chg);
+		}
+		void SetMonth(const int& month) {
+			int chg = month - GetMonth();
+			*_time_point += months(chg);
+		}
+		void SetDay(const int& day) {
+			int chg = day - GetDay();
+			*_time_point += days(chg);
+		}
+		void SetHour(const int& hour) {
+			int chg = hour - GetHour();
+			*_time_point += hours(chg);
+		}
+		void SetMinute(const int& minute) {
+			int chg = minute - GetMinute();
+			*_time_point += minutes(chg);
+		}
+		void SetSecond(const int& second) {
+			int chg = second - GetSecond();
+			*_time_point += seconds(chg);
+		}
 		zoned_time<_Duration> GetZonedTime() const {
 			if (_tz == nullptr) {
 				return make_zoned(current_zone(), *_time_point);

@@ -47,7 +47,6 @@ namespace datetime {
 					outp.back().push_back(it);
 				}
 			}
-			if (outp.back() == "") outp.pop_back();
 			return outp;
 		}
 
@@ -60,11 +59,13 @@ namespace datetime {
 					outp.back().push_back(it);
 				}
 			}
-			if (outp.back() == "") outp.pop_back();
 			return outp;
 		}
 
 		long long to_number(string inp) {
+			if (inp == "") {
+				return 0;
+			}
 #ifdef arith_parse_strings
 			using namespace exprtk;
 			expression<double> expr;
@@ -73,7 +74,7 @@ namespace datetime {
 			return expr.value();
 #else
 			stringstream instrm(inp);
-			long long outp;
+			long long outp = 0;
 			instrm >> outp;
 			return outp;
 #endif
