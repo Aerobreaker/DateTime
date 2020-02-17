@@ -427,7 +427,14 @@ namespace datetime {
 		void set_timezone(std::string new_tz) {
 			std::tie(_tz_name, _tz) = get_zone(new_tz);
 		}
-		std::string get_timezone() const {
+		void set_timezone(const date::time_zone* new_tz) {
+			_tz = new_tz;
+			_tz_name = _tz->name();
+		}
+		const date::time_zone* get_timezone() const {
+			return _tz;
+		}
+		std::string get_timezone_name() const {
 			return _tz_name;
 		}
 		std::string to_string() const {
