@@ -306,7 +306,7 @@ namespace datetime {
 			if (it == '-') special_delims[1]++;
 			if (it == '.') special_delims[2]++;
 		}
-		if (delim == "") {
+		if (delim == ",") {
 			if ((special_delims[0] == 2) + (special_delims[1] == 2) + (special_delims[2] == 2) == 1) {
 				if (special_delims[0] == 2) {
 					delim += "/";
