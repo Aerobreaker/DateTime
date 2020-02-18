@@ -98,17 +98,19 @@ namespace datetime {
 		unsigned char _value;
 		bool _h24;
 	public:
-		hour(bool h24 = true);
-		explicit constexpr hour(int h);
-		explicit constexpr hour(unsigned h, bool h24 = true);
+		hour(bool h24 = true) : _value(0), _h24(h24) {};
+		constexpr hour(int h) : _value(h % 24), _h24(true) {};
+		constexpr hour(unsigned h, bool h24 = true) : _value(h % 24), _h24(h24) {};
 		constexpr hour& operator ++ ();
 		constexpr hour operator ++ (int);
 		constexpr hour operator + (const hour& h);
 		constexpr hour operator + (const hours& h);
+		constexpr int operator + (const int& h);
 		constexpr hour& operator -- ();
 		constexpr hour operator -- (int);
 		constexpr hour operator - (const hours& h);
 		constexpr hours operator - (const hour& h);
+		constexpr int operator - (const int& h);
 		constexpr hour& operator += (const hours& h);
 		constexpr hour& operator -= (const hours& h);
 		constexpr bool operator == (const hour& h);
@@ -117,8 +119,18 @@ namespace datetime {
 		constexpr bool operator <= (const hour& h);
 		constexpr bool operator > (const hour& h);
 		constexpr bool operator >= (const hour& h);
-		constexpr explicit operator int() const;
-		constexpr explicit operator unsigned() const;
+		constexpr explicit operator int() const {
+			if (_h24 || (_value < 12)) {
+				return (int)_value;
+			}
+			return (int)(_value - 12);
+		};
+		constexpr explicit operator unsigned() const {
+			if (_h24 || (_value < 12)) {
+				return _value;
+			}
+			return _value - 12;
+		};
 		bool is_24h();
 		bool toggle_24h();
 		void make_24h(bool new_24h);
@@ -129,16 +141,19 @@ namespace datetime {
 	private:
 		unsigned char _value;
 	public:
-		minute();
-		explicit constexpr minute(unsigned m);
+		minute() : _value(0) {};
+		constexpr minute(int m) : _value(m % 60) {};
+		constexpr minute(unsigned m) : _value(m % 60) {};
 		constexpr minute& operator ++ ();
 		constexpr minute operator ++ (int);
 		constexpr minute operator + (const minute& m);
 		constexpr minute operator + (const minutes& m);
+		constexpr int operator + (const int& m);
 		constexpr minute& operator -- ();
 		constexpr minute operator -- (int);
 		constexpr minute operator - (const minutes& m);
 		constexpr minutes operator - (const minute& m);
+		constexpr int operator - (const int& h);
 		constexpr minute& operator += (const minutes& m);
 		constexpr minute& operator -= (const minutes& m);
 		constexpr bool operator == (const minute& m);
@@ -147,8 +162,12 @@ namespace datetime {
 		constexpr bool operator <= (const minute& m);
 		constexpr bool operator > (const minute& m);
 		constexpr bool operator >= (const minute& m);
-		constexpr explicit operator int() const;
-		constexpr explicit operator unsigned() const;
+		constexpr explicit operator int() const {
+			return (int)_value;
+		};
+		constexpr explicit operator unsigned() const {
+			return _value;
+		};
 		friend std::ostream& operator << (std::ostream& out, const minute& m);
 	};
 
@@ -156,16 +175,19 @@ namespace datetime {
 	private:
 		unsigned char _value;
 	public:
-		second();
-		explicit constexpr second(unsigned s);
+		second() : _value(0) {};
+		constexpr second(int s) : _value(s % 60) {};
+		constexpr second(unsigned s) : _value(s % 60) {};
 		constexpr second& operator ++ ();
 		constexpr second operator ++ (int);
 		constexpr second operator + (const second& s);
 		constexpr second operator + (const seconds& s);
+		constexpr int operator + (const int& s);
 		constexpr second& operator -- ();
 		constexpr second operator -- (int);
 		constexpr second operator - (const seconds& s);
 		constexpr seconds operator - (const second& s);
+		constexpr int operator - (const int& s);
 		constexpr second& operator += (const seconds& s);
 		constexpr second& operator -= (const seconds& s);
 		constexpr bool operator == (const second& s);
@@ -174,8 +196,12 @@ namespace datetime {
 		constexpr bool operator <= (const second& s);
 		constexpr bool operator > (const second& s);
 		constexpr bool operator >= (const second& s);
-		constexpr explicit operator int() const;
-		constexpr explicit operator unsigned() const;
+		constexpr explicit operator int() const {
+			return (int)_value;
+		};
+		constexpr explicit operator unsigned() const {
+			return _value;
+		};
 		friend std::ostream& operator << (std::ostream& out, const second& s);
 	};
 
@@ -293,13 +319,19 @@ namespace datetime {
 			return GetDate().day();
 		}
 		hour GetHour() const {
-			return hour(GetTimeOfDay().hours().count());
+			time_of_day<seconds> tim = this->GetTimeOfDay();
+			int hr = tim.hours().count();
+			return hour(hr);
 		}
 		minute GetMinute() const {
-			return minute(GetTimeOfDay().minutes().count());
+			time_of_day<seconds> tim = this->GetTimeOfDay();
+			int min = tim.minutes().count();
+			return minute(min);
 		}
 		second GetSecond() const {
-			return second(GetTimeOfDay().seconds().count());
+			time_of_day<seconds> tim = this->GetTimeOfDay();
+			int sec = tim.seconds().count();
+			return second(sec);
 		}
 		void Set(const DateTime& new_dt) {
 			delete _time_point;
@@ -319,37 +351,48 @@ namespace datetime {
 			SetTime(new_time);
 		}
 		void SetDate(const sys_days& new_date) {
-			*_time_point = new_date + GetTime();
+			*_time_point += new_date - GetDays();
 		}
 		void SetDate(const date_type& new_date) {
 			SetDate((sys_days)new_date);
 		}
 		void SetTime(const _Duration& new_time) {
-			*_time_point = GetDays() + new_time;
+			*_time_point += new_time - GetTimeOfDay().to_duration();
 		}
-		void SetYear(const int& year) {
-			int chg = year - GetYear();
-			*_time_point += years(chg);
+		void SetYear(const int& yr) {
+			int curyr = (int)GetYear();
+			int offs = yr - curyr;
+			*_time_point += years(offs);
 		}
-		void SetMonth(const int& month) {
-			int chg = month - GetMonth();
-			*_time_point += months(chg);
+		void SetMonth(const int& mon) {
+			int curmon = (size_t)GetMonth();
+			int offs = mon - curmon;
+			*_time_point += months(offs);
+			//*_time_point += date::floor<years>(*_time_point) - date::floor<months>(*_time_point) + months(mon-1);
 		}
-		void SetDay(const int& day) {
-			int chg = day - GetDay();
-			*_time_point += days(chg);
+		void SetDay(const int& dy) {
+			int curdy = (size_t)GetDay();
+			int offs = dy - curdy;
+			*_time_point += days(offs);
+			//*_time_point += date::floor<months>(*_time_point) - date::floor<days>(*_time_point) + days(dy-1);
 		}
-		void SetHour(const int& hour) {
-			int chg = hour - GetHour();
-			*_time_point += hours(chg);
+		void SetHour(const int& hr) {
+			int curhr = (int)GetHour();
+			int offs = hr - curhr;
+			*_time_point += hours(offs);
+			//*_time_point += date::floor<days>(*_time_point) - date::floor<hours>(*_time_point) + hours(hr);
 		}
-		void SetMinute(const int& minute) {
-			int chg = minute - GetMinute();
-			*_time_point += minutes(chg);
+		void SetMinute(const int& min) {
+			int curmin = (int)GetMinute();
+			int offs = min - curmin;
+			*_time_point += minutes(offs);
+			//*_time_point += date::floor<hours>(*_time_point) - date::floor<minutes>(*_time_point) + minutes(min);
 		}
-		void SetSecond(const int& second) {
-			int chg = second - GetSecond();
-			*_time_point += seconds(chg);
+		void SetSecond(const int& sec) {
+			int cursec = (int)GetSecond();
+			int offs = sec - cursec;
+			*_time_point += seconds(offs);
+			//*_time_point += date::floor<minutes>(*_time_point) - date::floor<seconds>(*_time_point) + seconds(sec);
 		}
 		zoned_time<_Duration> GetZonedTime() const {
 			if (_tz == nullptr) {
@@ -423,6 +466,7 @@ namespace datetime {
 		}
 		friend std::ostream& operator << (std::ostream& out, const DateTime& dt) {
 			out << dt.to_string();
+			return out;
 		}
 		void set_timezone(std::string new_tz) {
 			std::tie(_tz_name, _tz) = get_zone(new_tz);

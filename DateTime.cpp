@@ -11,7 +11,7 @@ using namespace date;
 using namespace std;
 
 namespace datetime {
-	
+
 	namespace {
 		//Namespace-private stuff goes here
 		unordered_map<string, pair<string, const time_zone*>> _cached_zones;
@@ -114,7 +114,7 @@ namespace datetime {
 
 	sys_days parse_date(string instr, deque<string> fmts) {
 		for (size_t i = 0; i < instr.length(); i++) {
-			if (i == 0 || instr[i-1] == ' ' || (instr[i-1] >= '0' && instr[i-1] <= '9')) {
+			if (i == 0 || instr[i - 1] == ' ' || (instr[i - 1] >= '0' && instr[i - 1] <= '9')) {
 				instr[i] = toupper(instr[i]);
 			} else {
 				instr[i] = std::tolower(instr[i]);
@@ -263,7 +263,7 @@ namespace datetime {
 				}
 				reading_state = finalize;
 			}
-			if (reading_state == finalize) {break;}
+			if (reading_state == finalize) { break; }
 		}
 		switch (reading_state) {
 		case hrs:
@@ -695,12 +695,6 @@ namespace datetime {
 		return hours(hr) + minutes(min) + seconds(sec);
 	}
 
-	hour::hour(bool h24) : _value(0), _h24(h24) {}
-
-	constexpr hour::hour(unsigned h, bool h24) : _value(h % 24), _h24(h24) {}
-
-	constexpr hour::hour(int h) : _value(h % 24), _h24(true) {}
-
 	constexpr hour& hour::operator ++ () {
 		_value = (_value + 1) % 24;
 		return *this;
@@ -718,6 +712,10 @@ namespace datetime {
 
 	constexpr hour hour::operator + (const hours& h) {
 		return hour(_value + h.count(), _h24);
+	}
+
+	constexpr int hour::operator + (const int& h) {
+		return _value + h;
 	}
 
 	constexpr hour& hour::operator -- () {
@@ -745,6 +743,10 @@ namespace datetime {
 
 	constexpr hours hour::operator - (const hour& h) {
 		return (hours)(_value - (h._value));
+	}
+
+	constexpr int hour::operator - (const int& h) {
+		return _value - h;
 	}
 
 	constexpr hour& hour::operator += (const hours& h) {
@@ -781,20 +783,6 @@ namespace datetime {
 		return _value >= h._value;
 	}
 
-	constexpr hour::operator int() const {
-		if (_h24 || (_value < 12)) {
-			return (int)_value;
-		}
-		return (int)(_value - 12);
-	}
-
-	constexpr hour::operator unsigned() const {
-		if (_h24 || (_value < 12)) {
-			return _value;
-		}
-		return _value - 12;
-	}
-
 	bool hour::is_24h() {
 		return _h24;
 	}
@@ -822,10 +810,6 @@ namespace datetime {
 		return out;
 	}
 
-	minute::minute() : _value(0) {}
-
-	constexpr minute::minute(unsigned m) : _value(m % 60) {}
-
 	constexpr minute& minute::operator ++ () {
 		_value = (_value + 1) % 60;
 		return *this;
@@ -845,6 +829,9 @@ namespace datetime {
 		return minute(_value + m.count());
 	}
 
+	constexpr int minute::operator + (const int& m) {
+		return _value + m;
+	}
 	constexpr minute& minute::operator -- () {
 		if (_value > 0) {
 			_value--;
@@ -870,6 +857,10 @@ namespace datetime {
 
 	constexpr minutes minute::operator - (const minute& m) {
 		return (minutes)(_value - (m._value));
+	}
+
+	constexpr int minute::operator - (const int& m) {
+		return _value - m;
 	}
 
 	constexpr minute& minute::operator += (const minutes& m) {
@@ -906,22 +897,10 @@ namespace datetime {
 		return _value >= m._value;
 	}
 
-	constexpr minute::operator int() const {
-		return (int)_value;
-	}
-
-	constexpr minute::operator unsigned() const {
-		return _value;
-	}
-
 	ostream& operator << (ostream& out, const minute& m) {
 		out << (int)m._value;
 		return out;
 	}
-
-	second::second() : _value(0) {}
-
-	constexpr second::second(unsigned s) : _value(s % 60) {}
 
 	constexpr second& second::operator ++ () {
 		_value = (_value + 1) % 60;
@@ -939,9 +918,12 @@ namespace datetime {
 	}
 
 	constexpr second second::operator + (const seconds& s) {
-		return second(_value + s.count());
+		return second((int)(_value + s.count()));
 	}
 
+	constexpr int second::operator + (const int& s) {
+		return _value + s;
+	}
 	constexpr second& second::operator -- () {
 		if (_value > 0) {
 			_value--;
@@ -962,11 +944,15 @@ namespace datetime {
 	}
 
 	constexpr second second::operator - (const seconds& s) {
-		return second(_value - s.count());
+		return second((int)(_value - s.count()));
 	}
 
 	constexpr seconds second::operator - (const second& s) {
 		return (seconds)(_value - (s._value));
+	}
+
+	constexpr int second::operator - (const int& s) {
+		return _value - s;
 	}
 
 	constexpr second& second::operator += (const seconds& s) {
@@ -1001,14 +987,6 @@ namespace datetime {
 
 	constexpr bool second::operator >= (const second& s) {
 		return _value >= s._value;
-	}
-
-	constexpr second::operator int() const {
-		return (int)_value;
-	}
-
-	constexpr second::operator unsigned() const {
-		return _value;
 	}
 
 	ostream& operator << (ostream& out, const second& s) {
