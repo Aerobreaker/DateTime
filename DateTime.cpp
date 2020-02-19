@@ -71,7 +71,7 @@ namespace datetime {
 			expression<double> expr;
 			parser<double>pars;
 			if (!pars.compile(inp, expr)) return 0;
-			return expr.value();
+			return (long long)expr.value();
 #else
 			stringstream instrm(inp);
 			long long outp = 0;
@@ -542,7 +542,7 @@ namespace datetime {
 				year = (int)today.year();
 			}
 		}
-		return sys_days(date::day(day) / date::month(month) / date::year(year));
+		return sys_days(date::day((unsigned int)day) / date::month((unsigned int)month) / date::year((int)year));
 	}
 
 	seconds smart_parse_time(string inp) {
