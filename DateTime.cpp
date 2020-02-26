@@ -294,7 +294,7 @@ namespace datetime {
 
 	sys_days smart_parse_date(string inp, bool prefer_month) {
 		inp = to_upper(inp);
-		string delim = ",";
+		string delim;
 		int special_delims[3] = {0, 0, 0};
 		vector<string> tokens {""};
 		for (const char& it : inp) {
@@ -306,7 +306,7 @@ namespace datetime {
 			if (it == '-') special_delims[1]++;
 			if (it == '.') special_delims[2]++;
 		}
-		if (delim == ",") {
+		if (delim == "") {
 			if ((special_delims[0] == 2) + (special_delims[1] == 2) + (special_delims[2] == 2) == 1) {
 				if (special_delims[0] == 2) {
 					delim += "/";
@@ -327,7 +327,7 @@ namespace datetime {
 				}
 			}
 		}
-		if (delim == ",") {
+		if (delim == "") {
 			constexpr sys_days null_date = sys_days(days(0));
 			sys_days outp = null_date;
 			if (inp.length() == 8) {
@@ -421,6 +421,7 @@ namespace datetime {
 			}
 			//return outp != null_date ? outp : sys_days(days(to_number(inp)));
 		} else {
+			delim += ",";
 			tokens = split_string(inp, delim);
 		}
 		deque<long long> unused;
@@ -504,19 +505,11 @@ namespace datetime {
 						day = val;
 					}
 				} else if (year == 0) {
-					if (token.length() > 2 || (int)(val / 100)) {
-						year = val;
-					} else {
-						//If they enter a 1 or 2 character token less than 100 (not that I can figure out how to get someting > 100 since we're not capturing factorial)
-						year = val + (int)((int)today.year() / 100) * 100;
-					}
+					year = val;
 				} else if (val != 0) {
 					unused.push_back(val);
 				}
 			}
-		}
-		if (day > 31 && year < 32) {
-			tie(day, year) = {year, day};
 		}
 		if (month == 0) {
 			if (!unused.empty()) {
@@ -542,7 +535,13 @@ namespace datetime {
 				year = (int)today.year();
 			}
 		}
-		return sys_days(date::day((unsigned int)day) / date::month((unsigned int)month) / date::year((int)year));
+		if (day > 31 && year < 32) {
+			tie(day, year) = {year, day};
+		}
+		if (year < 100) {
+			year += (int)((int)today.year() / 100) * 100;
+		}
+		return sys_days(date::day((int)day) / date::month((int)month) / date::year((int)year));
 	}
 
 	seconds smart_parse_time(string inp) {
