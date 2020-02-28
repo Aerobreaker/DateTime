@@ -136,7 +136,7 @@ namespace datetime {
 
 	seconds parse_time(string instr) {
 		/*
-		This one's a bit longer than smart_date_parse, but since I'm only handling 2 formats and they're relatively
+		This one's a bit longer than parse_date, but since I'm only handling 2 formats and they're relatively
 		easy to parse, I wanted to just build a quick state machine to handle it rather than figuring out formats and
 		dealing with figuring out how date::parse is expecting AM/PM to come through when it's passed a %p flag
 		*/
@@ -673,14 +673,10 @@ namespace datetime {
 				}
 				break;
 			case reading::AMPM:
-				if (it == 'p' || it == 'P') {
-					pm = true;
-				} else if ((it == 'a' || it == 'A') && hr == 12) {
-					hr = 0;
-				}
+				if (it == 'p' || it == 'P') pm = true;
 				reading_state = reading::finalize;
 			}
-			if (reading_state == reading::finalize) { break; }
+			if (reading_state == reading::finalize) break;
 		}
 		switch (reading_state) {
 		case reading::hrs:
@@ -692,6 +688,7 @@ namespace datetime {
 		case reading::secs:
 			sec = to_number(workingstr);
 		}
+		if (hr == 12) hr = 0;
 		if (pm) hr += 12;
 		return hours(hr) + minutes(min) + seconds(sec);
 	}
