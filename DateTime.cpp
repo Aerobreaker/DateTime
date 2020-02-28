@@ -675,6 +675,8 @@ namespace datetime {
 			case reading::AMPM:
 				if (it == 'p' || it == 'P') {
 					pm = true;
+				} else if ((it == 'a' || it == 'A') && hr == 12) {
+					hr = 0;
 				}
 				reading_state = reading::finalize;
 			}
