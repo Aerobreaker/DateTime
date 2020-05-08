@@ -552,8 +552,13 @@ namespace datetime {
 			AMPM,
 			finalize
 		};
+		enum class ampm {
+			null,
+			am,
+			pm
+		};
 		reading reading_state = reading::hrs;
-		bool pm = false;
+		ampm pm = ampm::null;
 		long long hr = 0;
 		long long min = 0;
 		long long sec = 0;
@@ -673,7 +678,8 @@ namespace datetime {
 				}
 				break;
 			case reading::AMPM:
-				if (it == 'p' || it == 'P') pm = true;
+				if (it == 'p' || it == 'P') pm = ampm::pm;
+				if (it == 'a' || it == 'A') pm = ampm::am;
 				reading_state = reading::finalize;
 			}
 			if (reading_state == reading::finalize) break;
@@ -688,8 +694,8 @@ namespace datetime {
 		case reading::secs:
 			sec = to_number(workingstr);
 		}
-		if (hr == 12) hr = 0;
-		if (pm) hr += 12;
+		if (hr == 12 && pm != ampm::null) hr = 0;
+		if (pm == ampm::pm) hr += 12;
 		return hours(hr) + minutes(min) + seconds(sec);
 	}
 
