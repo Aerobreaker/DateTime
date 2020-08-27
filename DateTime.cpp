@@ -318,11 +318,11 @@ namespace datetime {
 					delim += ".";
 				}
 			} else {
-				if (special_delims[0] > 1) {
+				if (special_delims[0]) {
 					delim += "/";
-				} else if (special_delims[1] > 1) {
+				} else if (special_delims[1]) {
 					delim += "-";
-				} else if (special_delims[2] > 1) {
+				} else if (special_delims[2]) {
 					delim += ".";
 				}
 			}
