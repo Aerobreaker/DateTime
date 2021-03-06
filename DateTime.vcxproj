@@ -166,7 +166,7 @@
     <ClCompile Include="tz.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="DateTime.h" />
+    <ClInclude Include="DateTime.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

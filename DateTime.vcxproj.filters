@@ -23,7 +23,7 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="DateTime.h">
+    <ClInclude Include="DateTime.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
